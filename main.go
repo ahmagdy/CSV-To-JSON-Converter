@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"flag"
@@ -45,35 +46,36 @@ func ReadCSV(path *string) ([]byte, string) {
 	//Remove the header row
 	content = content[1:]
 
-	jsonArr := "["
+	var buffer bytes.Buffer
+	buffer.WriteString("[")
 	for i, d := range content {
-		jsonArr += "{"
+		buffer.WriteString("{")
 		for j, y := range d {
-			jsonArr += (`"` + headersArr[j] + `":`)
+			buffer.WriteString(`"` + headersArr[j] + `":`)
 			_, fErr := strconv.ParseFloat(y, 32)
 			_, bErr := strconv.ParseBool(y)
 			if fErr == nil {
-				jsonArr += y
+				buffer.WriteString(y)
 			} else if bErr == nil {
-				jsonArr += strings.ToLower(y)
+				buffer.WriteString(strings.ToLower(y))
 			} else {
-				jsonArr += (`"` + y + `"`)
+				buffer.WriteString((`"` + y + `"`))
 			}
 			//end of property
 			if j < len(d)-1 {
-				jsonArr += ","
+				buffer.WriteString(",")
 			}
 
 		}
 		//end of object of the array
-		jsonArr += "}"
+		buffer.WriteString("}")
 		if i < len(content)-1 {
-			jsonArr += ","
+			buffer.WriteString(",")
 		}
 	}
 
-	jsonArr += `]`
-	rawMessage := json.RawMessage(jsonArr)
+	buffer.WriteString(`]`)
+	rawMessage := json.RawMessage(buffer.String())
 	x, _ := json.MarshalIndent(rawMessage, "", "  ")
 	newFileName := filepath.Base(*path)
 	newFileName = newFileName[0:len(newFileName)-len(filepath.Ext(newFileName))] + ".json"
