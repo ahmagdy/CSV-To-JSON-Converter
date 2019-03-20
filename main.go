@@ -104,8 +104,9 @@ func ReadCSV(path *string) ([]byte, string) {
 	// final correction for empty keys
 	str := buffer.String()
 	str = strings.Replace(str, ":}", `:""}`, -1)
-	str = strings.Replace(str, ":,", `:"",`, -1)
+	str = strings.Replace(str, `:,"`, `:"","`, -1)
 	rawMessage := json.RawMessage(str)
+	fmt.Println(string(rawMessage))
 	x, err := json.MarshalIndent(rawMessage, "", "  ")
 	if err != nil {
 		log.Fatal(err)
