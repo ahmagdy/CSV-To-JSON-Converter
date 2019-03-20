@@ -51,15 +51,41 @@ func ReadCSV(path *string) ([]byte, string) {
 	for i, d := range content {
 		buffer.WriteString("{")
 		for j, y := range d {
+			// \" -> '
+			y = strings.Replace(y, `\"`, "'", -1)
+			// """""" -> ''
+			y = strings.Replace(y, `""""""`, "''", -1)
+			// """" -> ''
+			y = strings.Replace(y, `""""`, "''", -1)
+			// """ -> "
+			y = strings.Replace(y, `"""`, `"`, -1)
+			// "" -> empty
+			y = strings.Replace(y, `""`, "", -1)
+			// '' -> ""
+			y = strings.Replace(y, "''", `""`, -1)
+			// trim external quotes
+			y = strings.Trim(y, `"`)
 			buffer.WriteString(`"` + headersArr[j] + `":`)
-			_, fErr := strconv.ParseFloat(y, 32)
-			_, bErr := strconv.ParseBool(y)
-			if fErr == nil {
-				buffer.WriteString(y)
-			} else if bErr == nil {
-				buffer.WriteString(strings.ToLower(y))
+			if len(y) == 0 {
+				buffer.WriteString(`""`)
 			} else {
-				buffer.WriteString((`"` + y + `"`))
+				_, fErr := strconv.ParseFloat(y, 32)
+				_, bErr := strconv.ParseBool(y)
+				if fErr == nil {
+					buffer.WriteString(y)
+				} else if bErr == nil {
+					buffer.WriteString(strings.ToLower(y))
+				} else {
+					// make room for json objects and arrays
+					switch string(y[0]) {
+					case "{":
+						fallthrough
+					case "[":
+						buffer.WriteString(y)
+					default:
+						buffer.WriteString(`"` + y + `"`)
+					}
+				}
 			}
 			//end of property
 			if j < len(d)-1 {
@@ -75,8 +101,16 @@ func ReadCSV(path *string) ([]byte, string) {
 	}
 
 	buffer.WriteString(`]`)
-	rawMessage := json.RawMessage(buffer.String())
-	x, _ := json.MarshalIndent(rawMessage, "", "  ")
+	// final correction for empty keys
+	str := buffer.String()
+	str = strings.Replace(str, ":}", `:""}`, -1)
+	str = strings.Replace(str, `:,"`, `:"","`, -1)
+	rawMessage := json.RawMessage(str)
+	fmt.Println(string(rawMessage))
+	x, err := json.MarshalIndent(rawMessage, "", "  ")
+	if err != nil {
+		log.Fatal(err)
+	}
 	newFileName := filepath.Base(*path)
 	newFileName = newFileName[0:len(newFileName)-len(filepath.Ext(newFileName))] + ".json"
 	r := filepath.Dir(*path)
